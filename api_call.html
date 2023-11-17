@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Api Call</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            text-align: center;
+        }
+
+        .tablecontent {
+            border-collapse: collapse;
+            width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        td,
+        th {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .tablehead {
+            background-color: black;
+            color: white;
+        }
+    </style>
+</head>
+
+
+<body>
+    <h1>The data from an API is displaying here...</h1>
+    <input type="search" placeholder="Search..." id="sear" onkeyup="searchFunc()">
+    <button onclick="createRow()">Create another user</button>
+    <div class="update-form" style="display: none;">
+        <input type="text" hidden id="upid">
+        <input type="name" id="upname">
+        <input type="email" id="upem">
+        <select name="depart" id="updpt">
+            <option value="DEV">DEV</option>
+            <option value="TST">TST</option>
+            <option value="SAL">SAL</option>
+            <option value="ADM">ADM</option>
+            <option value="SPT">SPT</option>
+            <option value="SUP">SUP</option>
+            <option value="LED">LED</option>
+        </select>
+        <button type="button" onclick="updateRow()">Update</button>
+    </div>
+
+    <div id="data">
+        <table class="tablecontent">
+            <thead>
+                <tr class="tablehead">
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email ID</th>
+                    <th>Department</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="rowcont">
+
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let resarr;
+        const url = "https://us-central1-vx-internal-apps.cloudfunctions.net/LeadOwnerGet";
+        const payload = {
+            data: {}
+        };
+
+        const localstr = localStorage.getItem("User");
+        if (localstr) {
+            const object_to_String = JSON.parse(localstr)
+            resarr = object_to_String;
+            loaddata();
+        }
+        else {
+
+
+            fetch(url, {
+                method: "POST",
+                body: JSON.stringify(payload),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data)
+                    resarr = data.result.result[0];
+                    //console.log(resarr)
+                    loaddata();
+                    localStorage.setItem("User",JSON.stringify(resarr))
+
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+        }
+
+
+        function loaddata() {
+            let tableData = "";
+            resarr.map((values) => {
+                tableData += `<tr>
+                        <td>${values.id}</td>
+                        <td>${values.nm}</td>
+                        <td>${values.email}</td>
+                        <td>${values.dpt}</td>
+                        <td>
+                            <button onclick="editRow(${values.id})">Edit</button>&nbsp;&nbsp;
+                            <button onclick="deleteRow(${values.id})">Delete</button>
+                        </td>
+                        </tr>`;
+            });
+            document.getElementById('rowcont').innerHTML = tableData;
+        }
+
+        function createRow() {
+            const newid = prompt("Enter the new id");
+            console.log(resarr)
+
+            if (!/^\d+$/.test(newid)) {
+                alert("ID must be a numeric value.");
+                return;
+            }
+
+            if (resarr.find(item => item.id == newid)) {
+                alert("This id already exists")
+                return;
+
+            } else {
+                const newname = prompt("Enter the new name");
+                if (newname == "" || newname == null) {
+                    alert("Invalid name.")
+                    return;
+                }
+                const newemail = prompt("Enter the new email id");
+                if (!/^\S+@\S+\.\S+$/.test(newemail)) {
+                    alert("Invalid email format.");
+                    return;
+                }
+                const newdpt = prompt("Enter the new department");
+                if (newdpt == "" || newdpt == null) {
+                    alert("Invalid department.")
+                }
+
+                var newObj = { id: newid, nm: newname, email: newemail, dpt: newdpt };
+                resarr.push(newObj);
+                loaddata();
+                localStorage.setItem("User",JSON.stringify(resarr))
+            }
+        }
+
+        function editRow(id) {
+            document.querySelector('.update-form').style.display = "block";
+            const obj = resarr.find(item => item.id == id);
+            document.getElementById('upid').value = obj.id;
+            document.getElementById('upname').value = obj.nm;
+            document.getElementById('upem').value = obj.email;
+            document.getElementById('updpt').value = obj.dpt;
+        }
+
+        function updateRow() {
+            const idup = document.getElementById('upid').value;
+            const nameup = document.getElementById('upname').value;
+            const emailup = document.getElementById('upem').value;
+            const departup = document.getElementById('updpt').value;
+
+            const index = resarr.findIndex(item => item.id == idup);
+            if (index !== -1) {
+                resarr[index].nm = nameup;
+                resarr[index].email = emailup;
+                resarr[index].dpt = departup;
+                loaddata();
+                document.querySelector('.update-form').style.display = "none";
+                localStorage.setItem("User",JSON.stringify(resarr))
+            }
+        }
+
+        function deleteRow(id) {
+            const cnfm = confirm("Are you that you want to delete?")
+            if (cnfm) {
+                const index = resarr.findIndex(item => item.id == id)
+                if (index !== -1) {
+                    resarr.splice(index, 1)
+                    loaddata()
+                }
+            }
+            localStorage.setItem("User",JSON.stringify(resarr))
+
+        }
+
+        function searchFunc() {
+            const fil = document.getElementById('sear').value.toLowerCase();
+            const ele = document.getElementsByTagName('tr');
+
+            for (let i = 0; i < ele.length; i++) {
+                const tabid = ele[i].getElementsByTagName('td')[0];
+                const tabname = ele[i].getElementsByTagName('td')[1];
+                const tabemail = ele[i].getElementsByTagName('td')[2];
+                const tabdept = ele[i].getElementsByTagName('td')[3];
+                if (tabid || tabname || tabemail || tabdept) {
+                    const textid = tabid.textContent || tabid.innerHTML;
+                    const textname = tabname.textContent || tabname.innerHTML;
+                    const textemail = tabemail.textContent || tabemail.innerHTML;
+                    const textdept = tabdept.textContent || tabdept.innerHTML;
+                    if (textid.indexOf(fil) > -1 || textname.toLowerCase().indexOf(fil) > -1 || textemail.toLowerCase().indexOf(fil) > -1 || textdept.toLowerCase().indexOf(fil) > -1) {
+                        ele[i].style.display = '';
+                    } else {
+                        ele[i].style.display = 'none';
+                    }
+                }
+            }
+        }
+
+
+
+
+    </script>
+</body>
+
+</html>
